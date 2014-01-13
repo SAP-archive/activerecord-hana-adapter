@@ -1,0 +1,19 @@
+default_connection: hana
+
+default_connection_info: &default_connection_info
+  adapter: hana
+  mode: <%= ENV['ARCONN'] || 'odbc' %>
+  dsn: <%= ENV['ACTIVERECORD_UNITTEST_DSN'] || 'localhost' %>
+  database: activerecord_test
+  username: <%= ENV['ACTIVERECORD_UNITTEST_USER'] || 'SYSTEM' %>
+  password: <%= ENV['ACTIVERECORD_UNITTEST_PASS'] || '' %>
+
+connections:
+
+  hana:
+    arunit:
+      <<: *default_connection_info
+    arunit2:
+      <<: *default_connection_info
+      database: activerecord_unittest2
+      
