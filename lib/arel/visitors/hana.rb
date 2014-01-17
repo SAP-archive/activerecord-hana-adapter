@@ -1,12 +1,11 @@
 require 'arel'
 
 module Arel
-
-	module Visitors
+  module Visitors
     class Hana < Arel::Visitors::ToSql
-		
-		end
-	end
+    
+    end
+  end
 end
 
 Arel::Visitors::VISITORS['hana'] = Arel::Visitors::Hana
