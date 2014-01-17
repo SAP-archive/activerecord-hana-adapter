@@ -29,21 +29,21 @@ task :test => ['test:hana']
 task :default => [:test]
 
 namespace :test do
-
+  
   ['hana'].each do |mode|
-		# Fix some issues inside ActiveRecords schema.rb
+    # Fix some issues inside ActiveRecords schema.rb
 
-		require 'fileutils'
+    require 'fileutils'
 
-		ar_test_root     = File.expand_path(File.join(Gem.loaded_specs['activerecord'].full_gem_path,'test'))
-		ar_schema_file   = File.expand_path(File.join(ar_test_root,'schema/schema.rb'))
+    ar_test_root     = File.expand_path(File.join(Gem.loaded_specs['activerecord'].full_gem_path,'test'))
+    ar_schema_file   = File.expand_path(File.join(ar_test_root,'schema/schema.rb'))
 
-		content     = File.read(ar_schema_file)
+    content     = File.read(ar_schema_file)
 
-		new_content = content.gsub(/ALTER TABLE fk_test_has_fk ADD/, "ALTER TABLE \#{quote_table_name 'fk_test_has_fk'} ADD")
-		new_content = new_content.gsub(/ALTER TABLE lessons_students ADD/, "ALTER TABLE \#{quote_table_name 'lessons_students'} ADD")
+    new_content = content.gsub(/ALTER TABLE fk_test_has_fk ADD/, "ALTER TABLE \#{quote_table_name 'fk_test_has_fk'} ADD")
+    new_content = new_content.gsub(/ALTER TABLE lessons_students ADD/, "ALTER TABLE \#{quote_table_name 'lessons_students'} ADD")
 
-		File.open(ar_schema_file, "w") {|file| file.write new_content}
+    File.open(ar_schema_file, "w") {|file| file.write new_content}
 
     Rake::TestTask.new(mode) do |t|
       t.libs = test_libs(mode)
@@ -74,9 +74,7 @@ namespace :profile do
           t.test_files = [test_file]
           t.verbose = true
         end
-        
       end
-      
     end
   end
   

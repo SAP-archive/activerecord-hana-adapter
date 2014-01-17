@@ -5,201 +5,212 @@ module ActiveRecord
     module Hana
       module SchemaStatements
 
-				def returning(value)
-    			yield(value)
-    			value
-  			end		
+        def returning(value)
+          yield(value)
+          value
+        end     
 
-				def structure_dump
-					# TODO: Implement
-				end
-				# === Migrations ======================================= #
-				if ::ActiveRecord::VERSION::MAJOR >= 4
-				      def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
-					migrations_paths = Array(migrations_paths)
-					version = version.to_i
-					sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
+        def structure_dump
+          # TODO: Implement
+        end
+                
+        # === Migrations ======================================= #
+                
+        if ::ActiveRecord::VERSION::MAJOR >= 4
+          
+          def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
+            migrations_paths = Array(migrations_paths)
+            version = version.to_i
+            sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
 
-					migrated = select_values("SELECT \"version\" FROM #{sm_table}").map { |v| v.to_i }
-					paths = migrations_paths.map {|p| "#{p}/[0-9]*_*.rb" }
-					versions = Dir[*paths].map do |filename|
-					  filename.split('/').last.split('_').first.to_i
-					end
+            migrated = select_values("SELECT \"version\" FROM #{sm_table}").map { |v| v.to_i }
+            paths = migrations_paths.map {|p| "#{p}/[0-9]*_*.rb" }
+            versions = Dir[*paths].map do |filename|
+              filename.split('/').last.split('_').first.to_i
+            end
 
-					unless migrated.include?(version)
-					  execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{version}')"
-					end
+            unless migrated.include?(version)
+              execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{version}')"
+            end
 
-					inserted = Set.new
-					(versions - migrated).each do |v|
-					  if inserted.include?(v)
-					    raise "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
-					  elsif v < version
-					    execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
-					    inserted << v
-					  end
-					end
-				      end
-				end
-				# === Tables =========================================== #				
+            inserted = Set.new
+              (versions - migrated).each do |v|
+                if inserted.include?(v)
+                  raise "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
+                elsif v < version
+                  execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
+                  inserted << v
+                end
+              end
+            end
+          
+          end
+        
+        # === Tables =========================================== #              
 
-				def table_exists?(table_name)
-				  return false if table_name.blank?
-				  unquoted_table_name = Utils.unqualify_table_name(table_name)
-				  super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
-				end
+        def table_exists?(table_name)
+          return false if table_name.blank?
+          
+          unquoted_table_name = Utils.unqualify_table_name(table_name)
+          super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
+        end
 
-				def tables
-	  			select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
-				end
+        def tables
+          select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
+        end
 
-				def table_structure(table_name)
-					returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
-						raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
-					end
-				end
-				def generic_table_definition(adapter = nil, table_name = nil, is_temporary = nil, options = {})
-				 	if ::ActiveRecord::VERSION::MAJOR >= 4
-				 		TableDefinition.new(native_database_types, table_name, is_temporary, options)
-					else
-						TableDefinition.new(adapter)
-					end
-				end
-				def create_table(table_name, options = {})
-        	td = generic_table_definition(self, table_name, options[:temporary], options[:options])
-        	td.primary_key(options[:primary_key] || Base.get_primary_key(table_name.to_s.singularize)) unless options[:id] == false
+        def table_structure(table_name)
+          returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
+            raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
+          end
+        end
+                
+        def generic_table_definition(adapter = nil, table_name = nil, is_temporary = nil, options = {})
+          if ::ActiveRecord::VERSION::MAJOR >= 4
+            TableDefinition.new(native_database_types, table_name, is_temporary, options)
+          else
+            TableDefinition.new(adapter)
+          end
+        end
 
-        	yield td if block_given?
+        def create_table(table_name, options = {})
+          td = generic_table_definition(self, table_name, options[:temporary], options[:options])
+          td.primary_key(options[:primary_key] || Base.get_primary_key(table_name.to_s.singularize)) unless options[:id] == false
 
-        	if options[:force] && table_exists?(table_name)
-          	drop_table(table_name, options)
-        	end
-					create_sequence(default_sequence_name(table_name, nil))
-					if ::ActiveRecord::VERSION::MAJOR >= 4
-						create_sql = schema_creation.accept td
-					else	
-						create_sql = "CREATE TABLE "
-						create_sql << "#{quote_table_name(table_name)} ("
-						create_sql << td.to_sql
-						create_sql << ") #{options[:options]}"
-					end
-						if options[:row]
-							create_sql.insert(6," ROW")
-						elsif options[:column]
-							create_sql.insert(6," COLUMN")
-						elsif options[:history]
-							create_sql.insert(6," HISTORY COLUMN")
-						elsif options[:global_temporary]
-							create_sql.insert(6," GLOBAL TEMPORARY")
-						elsif options[:local_temporary]
-							create_sql.insert(6," GLOBAL LOCAL")
-						else
-							create_sql.insert(6," #{default_table_type}")
-						end
+          yield td if block_given?
 
-        				execute create_sql
+          if options[:force] && table_exists?(table_name)
+            drop_table(table_name, options)
+          end
+                    
+          create_sequence(default_sequence_name(table_name, nil))
+          if ::ActiveRecord::VERSION::MAJOR >= 4
+            create_sql = schema_creation.accept td
+          else  
+            create_sql = "CREATE TABLE "
+            create_sql << "#{quote_table_name(table_name)} ("
+            create_sql << td.to_sql
+            create_sql << ") #{options[:options]}"
+          end
+                        
+          if options[:row]
+            create_sql.insert(6," ROW")
+          elsif options[:column]
+            create_sql.insert(6," COLUMN")
+          elsif options[:history]
+            create_sql.insert(6," HISTORY COLUMN")
+          elsif options[:global_temporary]
+            create_sql.insert(6," GLOBAL TEMPORARY")
+          elsif options[:local_temporary]
+            create_sql.insert(6," GLOBAL LOCAL")
+          else
+            create_sql.insert(6," #{default_table_type}")
+          end
 
-					if ::ActiveRecord::VERSION::MAJOR >= 4
-						td.indexes.each_pair { |c,o| add_index table_name, c, o }
-					end	
-					
-      			end
+            execute create_sql
 
-				def rename_table(table_name, new_name)
-        	execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
-					rename_sequence(table_name, new_name)
-      	end
+          if ::ActiveRecord::VERSION::MAJOR >= 4
+            td.indexes.each_pair { |c,o| add_index table_name, c, o }
+          end   
+                    
+        end
 
-				def drop_table(table_name, options = {})
-        	execute "DROP TABLE #{quote_table_name(table_name)}"
-					drop_sequence(default_sequence_name(table_name, nil))
-      	end
+        def rename_table(table_name, new_name)
+          execute "RENAME TABLE #{quote_table_name(table_name)} TO #{quote_table_name(new_name)}"
+          rename_sequence(table_name, new_name)
+        end
 
-				def default_table_type
-					"COLUMN"
-				end
+        def drop_table(table_name, options = {})
+          execute "DROP TABLE #{quote_table_name(table_name)}"
+          drop_sequence(default_sequence_name(table_name, nil))
+        end
 
-				# === Columns ========================================== #
+        def default_table_type
+          "COLUMN"
+        end
 
-				def columns(table_name, name = nil)
-					return [] if table_name.blank?
+        # === Columns ========================================== #
 
-					table_structure(table_name).map do |column|
-						HanaColumn.new column[0], column[1], column[2], column[3]
-					end
-				end
+        def columns(table_name, name = nil)
+          return [] if table_name.blank?
 
-				def add_column(table_name, column_name, type, options = {})
-        	add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD ( #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
-        	add_column_options!(add_column_sql, options)
-					add_column_sql << ")"
-        	execute(add_column_sql)
-      	end
+          table_structure(table_name).map do |column|
+            HanaColumn.new column[0], column[1], column[2], column[3]
+          end
+        end
 
-				def change_column(table_name, column_name, type, options = {})
-        	execute "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
-      	end
+        def add_column(table_name, column_name, type, options = {})
+          add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD ( #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          add_column_options!(add_column_sql, options)
+          add_column_sql << ")"
+          execute(add_column_sql)
+        end
+
+        def change_column(table_name, column_name, type, options = {})
+          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
+        end
 
         def change_column_default(table_name, column_name, default)
           execute "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} DEFAULT #{quote(default)})"
         end
 
-				def rename_column(table_name, column_name, new_column_name)
-        	execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
-      	end
+        def rename_column(table_name, column_name, new_column_name)
+          execute "RENAME COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} TO #{quote_column_name(new_column_name)}"
+        end
 
-				def remove_column(table_name, *column_names)
-        	if column_names.flatten!
-          	message = 'Passing array to remove_columns is deprecated, please use ' +
-                  	  'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
-          	ActiveSupport::Deprecation.warn message, caller
-        	end
+        def remove_column(table_name, *column_names)
+          if column_names.flatten!
+            message = 'Passing array to remove_columns is deprecated, please use ' +
+                      'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
+            ActiveSupport::Deprecation.warn message, caller
+          end
 
-        	columns_for_remove(table_name, *column_names).each do |column_name|
-          	execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
-        	end
-      	end
-      	alias :remove_columns :remove_column
+          columns_for_remove(table_name, *column_names).each do |column_name|
+            execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
+          end
+        end
+        
+        alias :remove_columns :remove_column
 
         def remove_default_constraint(table_name, column_name)
           execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{default_constraint_name(table_name, column_name)}"
         end
 
-				# === Views ============================================ #
-				
-				def views
+        # === Views ============================================ #
+                
+        def views
           select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
         end
 
-				# === Sequences ======================================== #
+        # === Sequences ======================================== #
 
-				def create_sequence(sequence, options = {})
-					create_sql = "CREATE SEQUENCE #{quote_table_name(sequence)} INCREMENT BY 1 START WITH 1 NO CYCLE"
-					execute create_sql 				
-				end
+        def create_sequence(sequence, options = {})
+          create_sql = "CREATE SEQUENCE #{quote_table_name(sequence)} INCREMENT BY 1 START WITH 1 NO CYCLE"
+          execute create_sql                
+        end
 
-				def rename_sequence(table_name, new_name)
-					rename_sql =  "CREATE SEQUENCE #{quote_table_name(default_sequence_name(new_name, nil))} "
-					rename_sql << "INCREMENT BY 1 "
-					rename_sql << "START WITH #{next_sequence_value(default_sequence_name(table_name, nil))} NO CYCLE"
-					execute rename_sql
+        def rename_sequence(table_name, new_name)
+          rename_sql =  "CREATE SEQUENCE #{quote_table_name(default_sequence_name(new_name, nil))} "
+          rename_sql << "INCREMENT BY 1 "
+          rename_sql << "START WITH #{next_sequence_value(default_sequence_name(table_name, nil))} NO CYCLE"
+          execute rename_sql
 
-					drop_sequence(default_sequence_name(table_name, nil))
-				end
+          drop_sequence(default_sequence_name(table_name, nil))
+        end
 
-				def drop_sequence(sequence)
-					execute "DROP SEQUENCE #{quote_table_name(sequence)}"		
-				end
+        def drop_sequence(sequence)
+          execute "DROP SEQUENCE #{quote_table_name(sequence)}"     
+        end
 
-				# === Datatypes ======================================== #
-				
-				def native_database_types
+        # === Datatypes ======================================== #
+                
+        def native_database_types
           @native_database_types ||= initialize_hana_database_types.freeze
         end
-				
-				def initialize_hana_database_types
-					{
-						# Standard Rails Data Types
+                
+        def initialize_hana_database_types
+          {
+            # Standard Rails Data Types
             :primary_key  => "BIGINT NOT NULL PRIMARY KEY",
             :string       => { :name => "NVARCHAR", :limit => 255  },
             :text         => { :name => "NCLOB" },
@@ -213,70 +224,71 @@ module ActiveRecord
             :binary       => { :name => "VARBINARY" },
             :boolean      => { :name => "TINYINT"},
 
-						#Additional Hana Data Types
-						:bigint       => { :name => "BIGINT" },
+            #Additional Hana Data Types
+            :bigint       => { :name => "BIGINT" },
           }
-				end
+        end
 
-		    # Maps logical Rails types to HANA-specific data types.
-		    def type_to_sql(type, limit = nil, precision = nil, scale = nil)
-		      case type.to_s
-					when 'decimal'
-						if precision > 38
-							precision = 38
-						end
+        # Maps logical Rails types to HANA-specific data types.
+        def type_to_sql(type, limit = nil, precision = nil, scale = nil)
+          case type.to_s
+            when 'decimal'
+              if precision > 38
+                precision = 38
+              end
+              super
+            
+            when 'integer'
+              return 'integer' unless limit
 
-						super
-		      when 'integer'
-		        return 'integer' unless limit
+              case limit
+                when 1; 'tinyint'
+                when 2; 'smallint'
+                when 3, 4; 'integer'
+                when 5..8; 'bigint'
+                else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+              end
+              
+            else
+              super
+          end
+        end
+    
+        # === Indexes ========================================= #
 
-		        case limit
-		          when 1; 'tinyint'
-							when 2; 'smallint'
-		          when 3, 4; 'integer'
-		          when 5..8; 'bigint'
-		          else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
-		        end
-		      else
-		        super
-		      end
-		    end
-	
-				# === Indexes ========================================= #
+        def remove_index!(table_name, index_name)
+          execute "DROP INDEX #{quote_column_name(index_name)}"
+        end     
 
-				def remove_index!(table_name, index_name)
-        	execute "DROP INDEX #{quote_column_name(index_name)}"
-      	end		
+        def rename_index(table_name, old_name, new_name)
+          execute "RENAME INDEX #{quote_column_name(old_name)} TO #{quote_column_name(new_name)}"
+        end             
 
-				def rename_index(table_name, old_name, new_name)
-        	execute "RENAME INDEX #{quote_column_name(old_name)} TO #{quote_column_name(new_name)}"
-      	end				
+        # === Schemas ========================================= #
+        
+        def schemas
+          select_values "SELECT schema_name FROM schemas"
+        end
 
-				# === Schemas ========================================= #
-		
-				def schemas
-					select_values "SELECT schema_name FROM schemas"
-				end
+        def create_schema(name)
+          execute "CREATE SCHEMA \"#{name}\""
+        end
 
-				def create_schema(name)
-					execute "CREATE SCHEMA \"#{name}\""
-				end
+        def set_schema(name)
+          execute "SET SCHEMA \"#{name}\""
+        end
 
-				def set_schema(name)
-					execute "SET SCHEMA \"#{name}\""
-				end
+        def drop_schema(name)
+          execute "DROP SCHEMA \"#{name}\""
+        end
+                
+        # === Utils ====================================== #
 
-				def drop_schema(name)
-					execute "DROP SCHEMA \"#{name}\""
-				end
-				
-				# === Utils ====================================== #
+        def quote_column_name(name)
+          %("#{name.to_s.gsub('"', '""')}")
+        end
 
-				def quote_column_name(name)
-        	%("#{name.to_s.gsub('"', '""')}")
-      	end
-
-			end
-		end
-	end
+      end
+    end
+  end
 end

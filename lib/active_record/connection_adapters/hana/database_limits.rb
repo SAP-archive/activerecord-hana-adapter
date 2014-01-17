@@ -16,7 +16,7 @@ module ActiveRecord
         end
 
         def in_clause_length
-					# TODO: Check this
+          # TODO: Check this
           65536
         end
 
@@ -29,12 +29,12 @@ module ActiveRecord
         end
 
         def joins_per_query
-					# TODO: Check this
+          # TODO: Check this
           256
         end
 
         def sql_query_length
-					# TODO: Check this
+          # TODO: Check this
           65536 * 4096
         end
 
