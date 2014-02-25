@@ -1,4 +1,3 @@
-
 # Custom db:create Task
 tasks = Rake.application.instance_variable_get '@tasks'
 tasks['db:create:original'] = tasks.delete 'db:create'
