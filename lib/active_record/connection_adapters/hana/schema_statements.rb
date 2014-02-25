@@ -8,16 +8,15 @@ module ActiveRecord
         def returning(value)
           yield(value)
           value
-        end     
+        end
 
         def structure_dump
           # TODO: Implement
         end
-                
+
         # === Migrations ======================================= #
-                
-        if ::ActiveRecord::VERSION::MAJOR >= 4
-          
+
+        if ::ActiveRecord::VERSION::STRING.to_f >= 3.1
           def assume_migrated_upto_version(version, migrations_paths = ActiveRecord::Migrator.migrations_paths)
             migrations_paths = Array(migrations_paths)
             version = version.to_i
@@ -43,9 +42,8 @@ module ActiveRecord
                 end
               end
             end
-          
           end
-        
+
         # === Tables =========================================== #              
 
         def table_exists?(table_name)
