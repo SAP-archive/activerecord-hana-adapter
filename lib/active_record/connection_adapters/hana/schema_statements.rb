@@ -4,7 +4,6 @@ module ActiveRecord
   module ConnectionAdapters
     module Hana
       module SchemaStatements
-
         def returning(value)
           yield(value)
           value
@@ -23,7 +22,7 @@ module ActiveRecord
             sm_table = quote_table_name(ActiveRecord::Migrator.schema_migrations_table_name)
 
             migrated = select_values("SELECT \"version\" FROM #{sm_table}").map { |v| v.to_i }
-            paths = migrations_paths.map {|p| "#{p}/[0-9]*_*.rb" }
+            paths = migrations_paths.map { |p| "#{p}/[0-9]*_*.rb" }
             versions = Dir[*paths].map do |filename|
               filename.split('/').last.split('_').first.to_i
             end
@@ -33,22 +32,22 @@ module ActiveRecord
             end
 
             inserted = Set.new
-              (versions - migrated).each do |v|
-                if inserted.include?(v)
-                  raise "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
-                elsif v < version
-                  execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
-                  inserted << v
-                end
+            (versions - migrated).each do |v|
+              if inserted.include?(v)
+                fail "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
+              elsif v < version
+                execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
+                inserted << v
               end
             end
           end
+        end
 
-        # === Tables =========================================== #              
+        # === Tables =========================================== #
 
         def table_exists?(table_name)
           return false if table_name.blank?
-          
+
           unquoted_table_name = Utils.unqualify_table_name(table_name)
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
@@ -59,10 +58,10 @@ module ActiveRecord
 
         def table_structure(table_name)
           returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
-            raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
+            fail(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
-                
+
         def generic_table_definition(adapter = nil, table_name = nil, is_temporary = nil, options = {})
           if ::ActiveRecord::VERSION::MAJOR >= 4
             TableDefinition.new(native_database_types, table_name, is_temporary, options)
@@ -80,37 +79,36 @@ module ActiveRecord
           if options[:force] && table_exists?(table_name)
             drop_table(table_name, options)
           end
-                    
+
           create_sequence(default_sequence_name(table_name, nil))
           if ::ActiveRecord::VERSION::MAJOR >= 4
             create_sql = schema_creation.accept td
-          else  
-            create_sql = "CREATE TABLE "
+          else
+            create_sql = 'CREATE TABLE '
             create_sql << "#{quote_table_name(table_name)} ("
             create_sql << td.to_sql
             create_sql << ") #{options[:options]}"
           end
-                        
+
           if options[:row]
-            create_sql.insert(6," ROW")
+            create_sql.insert(6, ' ROW')
           elsif options[:column]
-            create_sql.insert(6," COLUMN")
+            create_sql.insert(6, ' COLUMN')
           elsif options[:history]
-            create_sql.insert(6," HISTORY COLUMN")
+            create_sql.insert(6, ' HISTORY COLUMN')
           elsif options[:global_temporary]
-            create_sql.insert(6," GLOBAL TEMPORARY")
+            create_sql.insert(6, ' GLOBAL TEMPORARY')
           elsif options[:local_temporary]
-            create_sql.insert(6," GLOBAL LOCAL")
+            create_sql.insert(6, ' GLOBAL LOCAL')
           else
-            create_sql.insert(6," #{default_table_type}")
+            create_sql.insert(6, " #{default_table_type}")
           end
 
-            execute create_sql
+          execute create_sql
 
           if ::ActiveRecord::VERSION::MAJOR >= 4
-            td.indexes.each_pair { |c,o| add_index table_name, c, o }
-          end   
-                    
+            td.indexes.each_pair { |c, o| add_index table_name, c, o }
+          end
         end
 
         def rename_table(table_name, new_name)
@@ -124,7 +122,7 @@ module ActiveRecord
         end
 
         def default_table_type
-          "COLUMN"
+          'COLUMN'
         end
 
         # === Columns ========================================== #
@@ -140,7 +138,7 @@ module ActiveRecord
         def add_column(table_name, column_name, type, options = {})
           add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD ( #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
           add_column_options!(add_column_sql, options)
-          add_column_sql << ")"
+          add_column_sql << ')'
           execute(add_column_sql)
         end
 
@@ -158,8 +156,8 @@ module ActiveRecord
 
         def remove_column(table_name, *column_names)
           if column_names.flatten!
-            message = 'Passing array to remove_columns is deprecated, please use ' +
-                      'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
+            message = 'Passing array to remove_columns is deprecated, please use ' \
+              'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
             ActiveSupport::Deprecation.warn message, caller
           end
 
@@ -167,15 +165,15 @@ module ActiveRecord
             execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
           end
         end
-        
-        alias :remove_columns :remove_column
+
+        alias_method :remove_columns, :remove_column
 
         def remove_default_constraint(table_name, column_name)
           execute "ALTER TABLE #{quote_table_name(table_name)} DROP CONSTRAINT #{default_constraint_name(table_name, column_name)}"
         end
 
         # === Views ============================================ #
-                
+
         def views
           select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
         end
@@ -184,12 +182,12 @@ module ActiveRecord
 
         def create_sequence(sequence, options = {})
           create_sql = "CREATE SEQUENCE #{quote_table_name(sequence)} INCREMENT BY 1 START WITH 1 NO CYCLE"
-          execute create_sql                
+          execute create_sql
         end
 
         def rename_sequence(table_name, new_name)
           rename_sql =  "CREATE SEQUENCE #{quote_table_name(default_sequence_name(new_name, nil))} "
-          rename_sql << "INCREMENT BY 1 "
+          rename_sql << 'INCREMENT BY 1 '
           rename_sql << "START WITH #{next_sequence_value(default_sequence_name(table_name, nil))} NO CYCLE"
           execute rename_sql
 
@@ -197,75 +195,75 @@ module ActiveRecord
         end
 
         def drop_sequence(sequence)
-          execute "DROP SEQUENCE #{quote_table_name(sequence)}"     
+          execute "DROP SEQUENCE #{quote_table_name(sequence)}"
         end
 
         # === Datatypes ======================================== #
-                
+
         def native_database_types
           @native_database_types ||= initialize_hana_database_types.freeze
         end
-                
+
         def initialize_hana_database_types
           {
             # Standard Rails Data Types
-            :primary_key  => "BIGINT NOT NULL PRIMARY KEY",
-            :string       => { :name => "NVARCHAR", :limit => 255  },
-            :text         => { :name => "NCLOB" },
-            :integer      => { :name => "INTEGER" },
-            :float        => { :name => "FLOAT"},
-            :decimal      => { :name => "DECIMAL" },
-            :datetime     => { :name => "TIMESTAMP" },
-            :timestamp    => { :name => "TIMESTAMP" },
-            :time         => { :name => "TIME" },
-            :date         => { :name => "DATE" },
-            :binary       => { :name => "VARBINARY" },
-            :boolean      => { :name => "TINYINT"},
+            primary_key: 'BIGINT NOT NULL PRIMARY KEY',
+            string: { name: 'NVARCHAR', limit: 255  },
+            text: { name: 'NCLOB' },
+            integer: { name: 'INTEGER' },
+            float: { name: 'FLOAT' },
+            decimal: { name: 'DECIMAL' },
+            datetime: { name: 'TIMESTAMP' },
+            timestamp: { name: 'TIMESTAMP' },
+            time: { name: 'TIME' },
+            date: { name: 'DATE' },
+            binary: { name: 'VARBINARY' },
+            boolean: { name: 'TINYINT' },
 
-            #Additional Hana Data Types
-            :bigint       => { :name => "BIGINT" },
+            # Additional Hana Data Types
+            bigint: { name: 'BIGINT' },
           }
         end
 
         # Maps logical Rails types to HANA-specific data types.
         def type_to_sql(type, limit = nil, precision = nil, scale = nil)
           case type.to_s
-            when 'decimal'
-              if precision > 38
-                precision = 38
-              end
-              super
-            
-            when 'integer'
-              return 'integer' unless limit
+          when 'decimal'
+            if precision > 38
+              precision = 38
+            end
+            super
 
-              case limit
-                when 1; 'tinyint'
-                when 2; 'smallint'
-                when 3, 4; 'integer'
-                when 5..8; 'bigint'
-                else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
-              end
-              
-            else
-              super
+          when 'integer'
+            return 'integer' unless limit
+
+            case limit
+            when 1 then 'tinyint'
+            when 2 then 'smallint'
+            when 3, 4 then 'integer'
+            when 5..8 then 'bigint'
+            else fail(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+            end
+
+          else
+            super
           end
         end
-    
+
         # === Indexes ========================================= #
 
         def remove_index!(table_name, index_name)
           execute "DROP INDEX #{quote_column_name(index_name)}"
-        end     
+        end
 
         def rename_index(table_name, old_name, new_name)
           execute "RENAME INDEX #{quote_column_name(old_name)} TO #{quote_column_name(new_name)}"
-        end             
+        end
 
         # === Schemas ========================================= #
-        
+
         def schemas
-          select_values "SELECT schema_name FROM schemas"
+          select_values 'SELECT schema_name FROM schemas'
         end
 
         def create_schema(name)
@@ -279,13 +277,24 @@ module ActiveRecord
         def drop_schema(name)
           execute "DROP SCHEMA \"#{name}\""
         end
-                
+
         # === Utils ====================================== #
 
         def quote_column_name(name)
           %("#{name.to_s.gsub('"', '""')}")
         end
 
+        def add_column_options!(sql, options)
+          sql << " DEFAULT #{quote_value(options[:default], options[:column])}" if options_include_default?(options)
+          # must explicitly check for :null to allow change_column to work on migrations
+          if options[:null] == false
+            sql << ' NOT NULL'
+          end
+          if options[:auto_increment] == true
+            sql << ' AUTO_INCREMENT'
+          end
+          sql
+        end
       end
     end
   end
