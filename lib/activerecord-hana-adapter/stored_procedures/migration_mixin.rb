@@ -13,7 +13,7 @@ module ActiveRecord
 
           def create_procedure(name, options = {}, &block)
             definition = read_procedure_definition(options, &block).try(:strip)
-            raise ArgumentError, "Missing definition for stored procedure '#{name}'." if definition.blank?
+            fail ArgumentError, "Missing definition for stored procedure '#{name}'." if definition.blank?
             if definition =~ /CREATE PROCEDURE/i
               sql = definition.gsub(NAME_PLACEHOLDER, name.to_s)
             else
@@ -32,7 +32,7 @@ module ActiveRecord
           alias_method :drop_stored_procedure, :drop_procedure
 
           def inject_default_options(options)
-            options[:read_only] = true unless options.has_key?(:read_only)
+            options[:read_only] = true unless options.key?(:read_only)
           end
           private :inject_default_options
 
@@ -61,10 +61,10 @@ END
 
           def read_procedure_definition_from_file(file_name)
             path = File.join([Rails.root, 'db', 'procedures', file_name])
-            if File.exists?(path)
+            if File.exist?(path)
               File.read(path)
             else
-              raise IOError, "File not found: '#{path}'."
+              fail IOError, "File not found: '#{path}'."
             end
           end
           private :read_procedure_definition_from_file

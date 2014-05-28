@@ -40,7 +40,7 @@ module ActiveRecord
           private :call_stored_procedure
 
           def create_class_method(method_name, procedure_name, options = {})
-            self.singleton_class.send :define_method, method_name do |*args, &block|
+            singleton_class.send :define_method, method_name do |*args, &block|
               call_stored_procedure(procedure_name, args, options, &block)
             end
           end
@@ -67,7 +67,7 @@ module ActiveRecord
             bind_arguments(sql, arguments)
             relation = fetch_relation(sql, options)
             output_values = fetch_output_values(sql, arguments, options)
-            return relation, output_values
+            [relation, output_values]
           end
           private :execute_sql
 
@@ -85,7 +85,7 @@ module ActiveRecord
             relation = active_record_connection.select_all(sql)
             if (type = options[:class] || options[:type]) || options[:instantiate]
               type ||= self < ActiveRecord::Base ? self : self.class
-              relation.collect { |record| type.instantiate(record) }
+              relation.map { |record| type.instantiate(record) }
             else
               relation
             end
@@ -203,7 +203,7 @@ module ActiveRecord
           private :type_size
 
           def unsupported_type(type)
-            raise TypeError, "Output parameter type '#{type}' is not supported yet."
+            fail TypeError, "Output parameter type '#{type}' is not supported yet."
           end
           private :unsupported_type
 
@@ -213,7 +213,7 @@ module ActiveRecord
             options[:location] ||= :class
             options[:output_parameters] ||= {}
             method_name = (options[:as] || procedure_name).to_s
-            self.create_wrapper_methods(method_name, procedure_name, options)
+            create_wrapper_methods(method_name, procedure_name, options)
           end
           alias_method :uses_stored_procedure, :use_stored_procedure
         end

@@ -4,7 +4,6 @@ module ActiveRecord
   module ConnectionAdapters
     module Hana
       module Quoting
-
         QUOTED_TRUE, QUOTED_FALSE = '1', '0'
 
         def quoted_true
@@ -23,16 +22,16 @@ module ActiveRecord
             value = value.to_s
             return value unless column
 
-          case column.type
-          when :binary then value
-          when :integer then value.to_i
-          when :float then value.to_f
-          else
-            value
-          end
+            case column.type
+            when :binary then value
+            when :integer then value.to_i
+            when :float then value.to_f
+            else
+              value
+            end
 
           when true, false then value ? quoted_true : quoted_false
-  
+
           # BigDecimals need to be put in a non-normalized form and quoted.
           when nil        then nil
           when BigDecimal then value.to_s('F')
@@ -43,7 +42,7 @@ module ActiveRecord
             YAML.dump(value)
           end
         end
-        
+
         def quoted_date(value)
           if value.acts_like?(:time)
             zone_conversion_method = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
@@ -53,7 +52,7 @@ module ActiveRecord
             end
           end
 
-          value.to_s(:db).gsub(/ UTC.*/,"")
+          value.to_s(:db).gsub(/ UTC.*/, '')
         end
       end
     end

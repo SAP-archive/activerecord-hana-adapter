@@ -2,7 +2,6 @@ module ActiveRecord
   module ConnectionAdapters
     module Hana
       module DatabaseLimits
-        
         def column_name_length
           127
         end
@@ -17,7 +16,7 @@ module ActiveRecord
 
         def in_clause_length
           # TODO: Check this
-          65536
+          65_536
         end
 
         def indexes_per_table
@@ -35,7 +34,7 @@ module ActiveRecord
 
         def sql_query_length
           # TODO: Check this
-          65536 * 4096
+          65_536 * 4096
         end
 
         def table_alias_length
@@ -45,7 +44,6 @@ module ActiveRecord
         def table_name_length
           127
         end
-        
       end
     end
   end
