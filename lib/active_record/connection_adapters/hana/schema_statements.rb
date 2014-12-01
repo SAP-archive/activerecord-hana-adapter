@@ -247,7 +247,7 @@ module ActiveRecord
                 else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
               end
               
-              when 'nclob'
+              when 'text'
                 limit = nil
                 super
             else
