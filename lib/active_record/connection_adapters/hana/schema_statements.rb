@@ -219,7 +219,7 @@ module ActiveRecord
             :timestamp    => { :name => "TIMESTAMP" },
             :time         => { :name => "TIME" },
             :date         => { :name => "DATE" },
-            :binary       => { :name => "BLOB" }, # Not VARBINARY as it has a limit of 5000
+            :binary       => { :name => "VARBINARY" },
             :boolean      => { :name => "TINYINT"},
 
             #Additional Hana Data Types
@@ -247,9 +247,15 @@ module ActiveRecord
                 else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
               end
               
-              when 'text', 'binary'
+              when 'text'
                 limit = nil
                 super
+              when 'binary'
+                if limit.present? && limit.is_a?(Integer) && limit > 0 && limit <= 5000
+                  super
+                else
+                  'blob'
+                end
             else
               super
           end
