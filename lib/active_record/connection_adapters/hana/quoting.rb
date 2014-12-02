@@ -36,7 +36,12 @@ module ActiveRecord
           # BigDecimals need to be put in a non-normalized form and quoted.
           when nil        then nil
           when BigDecimal then value.to_s('F')
-          when Numeric    then value
+          when Numeric 
+            case column.sql_type 
+              when "BIGINT" then value.to_s #Fixes RangeError integer XXX too big to convert to `int'
+              else
+                value
+              end
           when Date, Time then quoted_date(value)
           when Symbol     then value.to_s
           else
