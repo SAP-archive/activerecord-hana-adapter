@@ -56,6 +56,16 @@ module ActiveRecord
         def tables
           select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
         end
+        
+        def indexes(table_name, name = nil)
+          indexes = []
+          return indexes if !table_exists?(table_name)
+          results = select "SELECT TABLE_NAME, INDEX_NAME, CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
+          results.each do |row|
+            indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (row["CONSTRAINT"] == "UNIQUE") || row[:CONSTRAINT] == "PRIMARY KEY")
+          end
+          indexes
+        end
 
         def table_structure(table_name)
           returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
