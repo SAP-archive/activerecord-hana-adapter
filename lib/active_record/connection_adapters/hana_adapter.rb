@@ -95,7 +95,8 @@ module ActiveRecord
       end     
 
       def clear_cache!
-        @statements.clear
+        super
+        @statements.clear if !@statements.nil?
       end
       
       # Should primary key values be selected from their corresponding
