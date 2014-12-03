@@ -62,7 +62,7 @@ module ActiveRecord
           return indexes if !table_exists?(table_name)
           results = select "SELECT TABLE_NAME, INDEX_NAME, CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
           results.each do |row|
-            indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (row["CONSTRAINT"].include? "UNIQUE") || row[:CONSTRAINT] == "PRIMARY KEY")
+            indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include? "UNIQUE") || row[:CONSTRAINT] == "PRIMARY KEY")
           end
           indexes
         end
