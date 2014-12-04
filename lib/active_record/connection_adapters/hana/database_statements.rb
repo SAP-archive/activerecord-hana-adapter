@@ -35,25 +35,23 @@ module ActiveRecord
 
         def exec_query(sql, name = nil, binds = [])
           log(sql, name, binds) do
-      
-            # Don't cache statements without bind values
-            if binds.empty?
-              stmt = @connection.run(sql)
-              cols = stmt.columns(true).map { |c| c.name }
-              records = stmt.fetch_all || []
+            begin
+              # Don't cache statements without bind values
+              if binds.empty?
+                stmt = @connection.run(sql)
+                cols = stmt.columns(true).map { |c| c.name }
+                records = stmt.fetch_all || []
+              else
+                # without statement caching
+                args = bind_params(sql,binds)
+                stmt = @connection.run(*args)
+                cols = stmt.columns(true).map { |c| c.name }
+                records = stmt.fetch_all || []
+              end
+            ensure
               stmt.drop
-              stmt = records
-            else
-              # without statement caching
-              args = bind_params(sql,binds)
-              stmt = @connection.run(*args)
-              cols = stmt.columns(true).map { |c| c.name }
-              records = stmt.fetch_all || []
-              stmt.drop
-              stmt = records
             end
-                
-            ActiveRecord::Result.new(cols, stmt)
+            ActiveRecord::Result.new(cols, records)
           end
         end
 
