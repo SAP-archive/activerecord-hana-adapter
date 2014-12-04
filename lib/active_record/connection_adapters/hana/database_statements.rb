@@ -49,7 +49,7 @@ module ActiveRecord
                 records = stmt.fetch_all || []
               end
             ensure
-              stmt.drop
+              stmt.drop if !stmt.nil?
             end
             ActiveRecord::Result.new(cols, records)
           end
