@@ -24,7 +24,9 @@ module ActiveRecord
             return value unless column
 
           case column.type
-          when :binary then value
+          when :binary
+            value = value.unpack("H*")[0]
+            "x'#{value}'"
           when :integer then value.to_i
           when :float then value.to_f
           else
