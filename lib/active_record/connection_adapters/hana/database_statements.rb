@@ -30,6 +30,27 @@ module ActiveRecord
         def empty_insert_statement_value
           "null"
         end
+        
+        def insert_fixture(fixture, table_name)
+          columns = schema_cache.columns_hash(table_name)
+          key_list   = []
+          value_list = []
+          fixture.map do |name, value|
+            key_list << quote_column_name(name)
+            value_list << type_cast(value, columns[name])
+          end
+          prep = Array.new( key_list.size, "?").join(',')
+          args = ["INSERT INTO #{quote_table_name(table_name)} (#{key_list.join(', ')}) VALUES (#{prep})"]
+          args= args.concat(value_list)
+          begin
+            stmt = @connection.run(*args)
+            cols = stmt.columns(true).map { |c| c.name }
+            records = stmt.fetch_all || []
+          ensure
+            stmt.drop if !stmt.nil?
+          end
+          ActiveRecord::Result.new(cols, records)
+        end
 
         # === Executing ============================ #
 
