@@ -31,6 +31,10 @@ module ActiveRecord
           "null"
         end
         
+        def current_database
+          @connection_options[:database]
+        end 
+        
         def insert_fixture(fixture, table_name)
           columns = schema_cache.columns_hash(table_name)
           key_list   = []
@@ -44,12 +48,13 @@ module ActiveRecord
           args= args.concat(value_list)
           begin
             stmt = @connection.run(*args)
-            cols = stmt.columns(true).map { |c| c.name }
-            records = stmt.fetch_all || []
           ensure
             stmt.drop if !stmt.nil?
           end
-          ActiveRecord::Result.new(cols, records)
+          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = 'id' AND SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") 
+            val = select_value "SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(table_name)}"
+            execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESTART WITH #{val}"
+          end
         end
 
         # === Executing ============================ #
