@@ -115,7 +115,10 @@ module ActiveRecord
             create_sql.insert(6," #{default_table_type}")
           end
 
-            execute create_sql
+          execute create_sql
+          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = 'id' AND SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'")
+            execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESET BY SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(table_name)}"
+          end
 
           if ::ActiveRecord::VERSION::MAJOR >= 4
             td.indexes.each_pair { |c,o| add_index table_name, c, o }
@@ -198,9 +201,11 @@ module ActiveRecord
         end
 
         def rename_sequence(table_name, new_name)
-          rename_sql =  "CREATE SEQUENCE #{quote_table_name(default_sequence_name(new_name, nil))} "
+          seq = quote_table_name(default_sequence_name(new_name, nil))
+          rename_sql =  "CREATE SEQUENCE #{seq} "
           rename_sql << "INCREMENT BY 1 "
-          rename_sql << "START WITH #{next_sequence_value(default_sequence_name(table_name, nil))} NO CYCLE"
+          rename_sql << "START WITH #{next_sequence_value(default_sequence_name(table_name, nil))} NO CYCLE "
+          rename_sql << "RESET BY SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(new_name)}"
           execute rename_sql
 
           drop_sequence(default_sequence_name(table_name, nil))
