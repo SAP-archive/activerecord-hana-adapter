@@ -301,7 +301,7 @@ module ActiveRecord
         # === Utils ====================================== #
 
         def quote_column_name(name)
-          %("#{name.to_s.gsub('"', '""')}")
+          %("#{name.to_s.upcase.gsub('"', '""')}")
         end
 
       end
