@@ -52,6 +52,13 @@ module ActiveRecord
           unquoted_table_name = Utils.unqualify_table_name(table_name)
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
+
+        def column_for(table_name, column_name)
+          unless column = columns(table_name).find { |c| c.name == column_name.to_s.upcase }
+            raise "No such column: #{table_name}.#{column_name}"
+          end
+          column
+        end
         
         def index_name(table_name, options) #:nodoc:
           if Hash === options # legacy support
@@ -173,11 +180,20 @@ module ActiveRecord
         end
 
         def change_column(table_name, column_name, type, options = {})
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])})"
+          change_column_sql <<  "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          add_column_options!(change_column_sql, options)
+          change_column_sql << ")"
+          execute(change_column_sql)
         end
 
         def change_column_default(table_name, column_name, default)
-          execute "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} DEFAULT #{quote(default)})"
+          column = column_for(table_name, column_name)
+          change_column table_name, column_name, column.sql_type, :default => default
+        end
+        
+        def change_column_null(table_name, column_name, null)
+          column = column_for(table_name, column_name)
+          change_column table_name, column_name, column.sql_type, :null => null
         end
 
         def rename_column(table_name, column_name, new_column_name)
