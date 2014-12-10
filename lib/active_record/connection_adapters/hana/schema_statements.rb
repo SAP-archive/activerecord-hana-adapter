@@ -145,7 +145,7 @@ module ActiveRecord
         def columns(table_name, name = nil)
           return [] if table_name.blank?
 
-          table_structure(table_name).map do |column|
+          table_structure(table_name.upcase).map do |column|
             HanaColumn.new column[0], column[1], column[2], column[3]
           end
         end
