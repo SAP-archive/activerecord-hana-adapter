@@ -180,7 +180,7 @@ module ActiveRecord
         end
 
         def change_column(table_name, column_name, type, options = {})
-          change_column_sql <<  "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
+          change_column_sql =  "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
           add_column_options!(change_column_sql, options)
           change_column_sql << ")"
           execute(change_column_sql)
