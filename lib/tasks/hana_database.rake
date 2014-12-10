@@ -9,7 +9,9 @@ namespace 'db' do
     config = ActiveRecord::Base.configurations[::Rails.env]
     if config['adapter'] == 'hana'
       ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection.execute("CREATE SCHEMA \"#{config['database']}\" OWNED BY #{config['username']}")
+     if not ActiveRecord::Base.connection.schemas.include? config['database']
+        ActiveRecord::Base.connection.execute("CREATE SCHEMA \"#{config['database']}\" OWNED BY #{config['username']}")
+      end
     else
       Rake::Task['db:create:original'].invoke
     end
