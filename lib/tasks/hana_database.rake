@@ -5,22 +5,19 @@ tasks = Rake.application.instance_variable_get '@tasks'
 end
 
 namespace 'db' do
-  task 'create' do
-    ActiveRecord::Base.configurations = YAML::load(IO.read('config/database.yml'))
+  task :create => [:load_config, :rails_env] do
     config = ActiveRecord::Base.configurations[::Rails.env]
     if config['adapter'] == 'hana'
       ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection.execute("DROP SCHEMA \"#{config['database']}\" CASCADE")
       ActiveRecord::Base.connection.execute("CREATE SCHEMA \"#{config['database']}\" OWNED BY #{config['username']}")
     else
       Rake::Task['db:create:original'].invoke
     end
   end
 
-  task 'drop' do
-    ActiveRecord::Base.configurations = YAML::load(IO.read('config/database.yml'))
+  task :drop => [:load_config, :rails_env] do
     config = ActiveRecord::Base.configurations[::Rails.env]
-    if config['adapter'] == 'hana' 
+    if config['adapter'] == 'hana'
       ActiveRecord::Base.establish_connection(config)
       ActiveRecord::Base.connection.execute("DROP SCHEMA \"#{config['database']}\" CASCADE")
     else
