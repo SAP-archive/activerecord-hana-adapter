@@ -53,16 +53,19 @@ module ActiveRecord
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
         
-        def index_exists?(table_name, column_name, options = {})
-        column_names = Array.wrap(column_name)
-        index_name = options.key?(:name) ? options[:name].to_s : index_name(table_name, :column => column_names)
-        index_name.upcase!
-        if options[:unique]
-          indexes(table_name).any?{ |i| i.unique && i.name == index_name }
-        else
-          indexes(table_name).any?{ |i| i.name == index_name }
+        def index_name(table_name, options) #:nodoc:
+          if Hash === options # legacy support
+            if options[:column]
+              "index_#{table_name}_on_#{Array.wrap(options[:column]) * '_and_'}".upcase
+            elsif options[:name]
+              options[:name].upcase
+            else
+              raise ArgumentError, "You must specify the index name"
+            end
+          else
+            index_name(table_name, :column => options)
+          end
         end
-      end
 
         def tables
           select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
