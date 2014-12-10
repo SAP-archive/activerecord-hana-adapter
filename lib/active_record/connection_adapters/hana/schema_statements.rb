@@ -59,6 +59,7 @@ module ActiveRecord
         
         def indexes(table_name, name = nil)
           indexes = []
+          table_name.upcase!
           return indexes if !table_exists?(table_name)
           results = select "SELECT TABLE_NAME, INDEX_NAME, CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
           results.each do |row|
