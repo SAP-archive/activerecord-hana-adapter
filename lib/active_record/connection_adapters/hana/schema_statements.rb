@@ -75,7 +75,7 @@ module ActiveRecord
         end
 
         def table_structure(table_name)
-          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'") do
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE, LENGTH, SCALE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
@@ -153,7 +153,7 @@ module ActiveRecord
           return [] if table_name.blank?
 
           table_structure(table_name).map do |column|
-            HanaColumn.new column[0], column[1], column[2], column[3]
+            HanaColumn.new column[0], column[1], column[2], column[3], column[4], column[5]
           end
         end
 
