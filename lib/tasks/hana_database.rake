@@ -10,7 +10,7 @@ namespace 'db' do
     if config['adapter'] == 'hana'
       ActiveRecord::Base.establish_connection(config)
      if not ActiveRecord::Base.connection.schemas.include? config['database']
-        ActiveRecord::Base.connection.execute("CREATE SCHEMA \"#{config['database']}\" OWNED BY #{config['username']}")
+        ActiveRecord::Base.connection.create_schema(config['database'])
       end
     else
       Rake::Task['db:create:original'].invoke
@@ -21,7 +21,7 @@ namespace 'db' do
     config = ActiveRecord::Base.configurations[::Rails.env]
     if config['adapter'] == 'hana'
       ActiveRecord::Base.establish_connection(config)
-      ActiveRecord::Base.connection.execute("DROP SCHEMA \"#{config['database']}\" CASCADE")
+      ActiveRecord::Base.connection.drop_schema(config['database'])
     else
       Rake::Task['db:drop:original'].invoke
     end
