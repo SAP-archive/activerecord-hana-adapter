@@ -61,7 +61,7 @@ module ActiveRecord
         end
         
         def tables
-          select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
+          select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\'", 'SCHEMA'
         end
         
         def indexes(table_name, name = nil)
@@ -193,6 +193,7 @@ module ActiveRecord
           end
 
           columns_for_remove(table_name, *column_names).each do |column_name|
+            execute "ALTER TABLE #{quote_table_name(table_name)} DROP PRIMARY KEY" if primary_key(table_name) == column_name
             execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
           end
         end
