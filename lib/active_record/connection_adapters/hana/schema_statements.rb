@@ -48,8 +48,9 @@ module ActiveRecord
 
         def table_exists?(table_name)
           return false if table_name.blank?
-          table_name.upcase!
+          
           unquoted_table_name = Utils.unqualify_table_name(table_name)
+          unquoted_table_name.upcase!
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
 
