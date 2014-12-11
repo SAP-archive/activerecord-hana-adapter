@@ -69,7 +69,7 @@ module ActiveRecord
           return indexes if !table_exists?(table_name)
           results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'",  'INDEXES'
           results.each do |row|
-            indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
+            indexes << IndexDefinition.new(row["table_name"], row["index_name"], (!row["constraint"].nil? && row["constraint"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
           end
           indexes
         end
