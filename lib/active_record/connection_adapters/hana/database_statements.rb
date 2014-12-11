@@ -65,13 +65,13 @@ module ActiveRecord
               # Don't cache statements without bind values
               if binds.empty?
                 stmt = @connection.run(sql)
-                cols = stmt.columns(true).map { |c| c.name }
+                cols = stmt.columns(true).map { |c| c.name.downcase }
                 records = stmt.fetch_all || []
               else
                 # without statement caching
                 args = bind_params(sql,binds)
                 stmt = @connection.run(*args)
-                cols = stmt.columns(true).map { |c| c.name }
+                cols = stmt.columns(true).map { |c| c.name.downcase }
                 records = stmt.fetch_all || []
               end
             ensure
