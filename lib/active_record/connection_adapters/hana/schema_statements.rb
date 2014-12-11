@@ -283,7 +283,7 @@ module ActiveRecord
                 else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
               end
               
-              when 'text', 'binary'
+              when 'text', 'binary', 'boolean'
                 limit = nil
                 super
             else
