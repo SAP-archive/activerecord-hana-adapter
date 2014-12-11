@@ -50,40 +50,25 @@ module ActiveRecord
           return false if table_name.blank?
           
           unquoted_table_name = Utils.unqualify_table_name(table_name)
-          unquoted_table_name.upcase!
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
 
         def column_for(table_name, column_name)
-          unless column = columns(table_name).find { |c| c.name == column_name.to_s.upcase }
+          unless column = columns(table_name).find { |c| c.name == column_name.to_s }
             raise "No such column: #{table_name}.#{column_name}"
           end
           column
         end
         
-        def index_name(table_name, options) #:nodoc:
-          if Hash === options # legacy support
-            if options[:column]
-              "index_#{table_name}_on_#{Array.wrap(options[:column]) * '_and_'}".upcase
-            elsif options[:name]
-              options[:name].upcase
-            else
-              raise ArgumentError, "You must specify the index name"
-            end
-          else
-            index_name(table_name, :column => options)
-          end
-        end
-
         def tables
-          select_values "SELECT TABLE_NAME FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
+          select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\'", 'SCHEMA'
         end
         
         def indexes(table_name, name = nil)
           indexes = []
-          table_name.upcase!
           return indexes if !table_exists?(table_name)
-          results = select "SELECT TABLE_NAME, INDEX_NAME, CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
+          table_name.upcase!
+          results = select "SELECT LOWER(TABLE_NAME), LOWER(INDEX_NAME), LOWER(CONSTRAINT) FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
           results.each do |row|
             indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
           end
@@ -91,7 +76,8 @@ module ActiveRecord
         end
 
         def table_structure(table_name)
-          returning structure = select_rows("SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
+          table_name.upcase!
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME), DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
@@ -168,7 +154,7 @@ module ActiveRecord
         def columns(table_name, name = nil)
           return [] if table_name.blank?
 
-          table_structure(table_name.upcase).map do |column|
+          table_structure(table_name).map do |column|
             HanaColumn.new column[0], column[1], column[2], column[3]
           end
         end
