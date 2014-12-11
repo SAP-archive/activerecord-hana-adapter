@@ -67,8 +67,7 @@ module ActiveRecord
         def indexes(table_name, name = nil)
           indexes = []
           return indexes if !table_exists?(table_name)
-          table_name.upcase!
-          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
+          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'",  'INDEXES'
           results.each do |row|
             indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
           end
@@ -76,8 +75,7 @@ module ActiveRecord
         end
 
         def table_structure(table_name)
-          table_name.upcase!
-          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
@@ -125,7 +123,7 @@ module ActiveRecord
           end
 
           execute create_sql
-          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = 'id' AND SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'")
+          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = 'ID' AND SCHEMA_NAME=\'#{#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'")
             execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESET BY SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(table_name)}"
           end
 
@@ -301,23 +299,25 @@ module ActiveRecord
         # === Schemas ========================================= #
         
         def schemas
-          select_values "SELECT schema_name FROM schemas"
+          select_values "SELECT LOWER(SCHEMA_NAME) FROM SCHEMAS"
         end
 
         def create_schema(name)
-          execute "CREATE SCHEMA \"#{name}\""
+          execute "CREATE SCHEMA #{quote_schema_name(name)}"
         end
 
         def set_schema(name)
-          execute "SET SCHEMA \"#{name}\""
+          execute "SET SCHEMA #{quote_schema_name(name)}"
         end
 
         def drop_schema(name)
-          execute "DROP SCHEMA \"#{name}\""
+          execute "DROP SCHEMA #{quote_schema_name(name)}"
         end
                 
         # === Utils ====================================== #
-
+        def quote_schema_name(name)
+          quote_column_name(name)
+        end
         def quote_column_name(name)
           %("#{name.to_s.upcase.gsub('"', '""')}")
         end
