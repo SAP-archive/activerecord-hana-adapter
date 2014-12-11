@@ -43,6 +43,12 @@ module ActiveRecord
             key_list << quote_column_name(name)
             value_list << type_cast(value, columns[name])
           end
+          pk = primary_key(table_name)
+          has_id = key_list.include?(pk)
+          if not has_id
+            key_list << quote_column_name(pk)
+            value_list << type_cast(next_sequence_value(default_sequence_name(table_name, nil)), columns[pk])
+          end
           prep = Array.new( key_list.size, "?").join(',')
           args = ["INSERT INTO #{quote_table_name(table_name)} (#{key_list.join(', ')}) VALUES (#{prep})"]
           args= args.concat(value_list)
@@ -51,9 +57,9 @@ module ActiveRecord
           ensure
             stmt.drop if !stmt.nil?
           end
-          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = 'id' AND SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") 
-            val = select_value "SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(table_name)}"
-            execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESTART WITH #{val}"
+          if has_id and pk
+            val = select_value "SELECT IFNULL(MAX(#{quote_column_name(pk)}), 0) + 1 FROM #{quote_table_name(table_name)}"
+            restart_sequence(default_sequence_name(table_name, nil), val)
           end
         end
 
