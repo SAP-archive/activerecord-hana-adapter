@@ -231,6 +231,10 @@ module ActiveRecord
         def drop_sequence(sequence)
           execute "DROP SEQUENCE #{quote_table_name(sequence)}"     
         end
+        
+        def restart_sequence(sequence, value)
+          execute "ALTER SEQUENCE #{quote_table_name(sequence_name)} RESTART WITH #{value}"
+        end
 
         # === Datatypes ======================================== #
                 
