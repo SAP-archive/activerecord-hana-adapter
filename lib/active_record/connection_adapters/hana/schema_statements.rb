@@ -68,7 +68,7 @@ module ActiveRecord
           indexes = []
           return indexes if !table_exists?(table_name)
           table_name.upcase!
-          results = select "SELECT LOWER(TABLE_NAME), LOWER(INDEX_NAME), LOWER(CONSTRAINT) FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
+          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE TABLE_NAME='#{table_name}' AND SCHEMA_NAME=\'#{@connection_options[:database]}\'",  'INDEXES'
           results.each do |row|
             indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
           end
@@ -77,7 +77,7 @@ module ActiveRecord
 
         def table_structure(table_name)
           table_name.upcase!
-          returning structure = select_rows("SELECT LOWER(COLUMN_NAME), DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
