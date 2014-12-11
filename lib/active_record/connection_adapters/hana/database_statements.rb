@@ -43,7 +43,7 @@ module ActiveRecord
             key_list << quote_column_name(name)
             value_list << type_cast(value, columns[name])
           end
-          pk = primary_key(table_name)
+          pk = quote_column_name(primary_key(table_name))
           has_id = key_list.include?(pk)
           if not has_id
             key_list << quote_column_name(pk)
