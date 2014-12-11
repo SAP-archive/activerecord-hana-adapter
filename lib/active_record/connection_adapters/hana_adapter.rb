@@ -152,7 +152,7 @@ module ActiveRecord
       end
 
       def primary_key(table_name)
-        row = select_values "SELECT COLUMN_NAME FROM CONSTRAINTS WHERE SCHEMA_NAME=\'#{@connection_options[:database]}\' AND TABLE_NAME=\'#{table_name}\' AND IS_PRIMARY_KEY=\'TRUE\'"
+        row = select_values "SELECT LOWER(COLUMN_NAME) FROM CONSTRAINTS WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\' AND IS_PRIMARY_KEY=\'TRUE\'"
         row && row.first
       end 
 
