@@ -173,12 +173,12 @@ module ActiveRecord
 
         def change_column_default(table_name, column_name, default)
           column = column_for(table_name, column_name)
-          change_column table_name, column_name, column.sql_type, :default => default
+          change_column table_name, column_name, column.type, {:default => default, :limit => column.limit, :scale => column.scale, :null => column.null, :precision => column.precision }
         end
         
         def change_column_null(table_name, column_name, null)
           column = column_for(table_name, column_name)
-          change_column table_name, column_name, column.sql_type, :null => null
+          change_column table_name, column_name, column.type, {:default => column.default, :limit => column.limit, :scale => column.scale, :null => null, :precision => column.precision }
         end
 
         def rename_column(table_name, column_name, new_column_name)
