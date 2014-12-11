@@ -35,7 +35,18 @@ module ActiveRecord
   module ConnectionAdapters
 
     class HanaColumn < Column
-
+      def initialize(name, default, sql_type = nil, null = true, limit = nil, scale = nil)
+        @name      = name
+        @sql_type  = sql_type
+        @null      = null
+        @limit     = limit
+        @precision = extract_precision(sql_type)
+        @scale     = scale
+        @type      = simplified_type(sql_type)
+        @default   = default
+        @primary   = nil
+        @coder     = nil
+      end
     
     end #class HanaColumn
 
