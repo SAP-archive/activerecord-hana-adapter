@@ -193,7 +193,7 @@ module ActiveRecord
           end
 
           columns_for_remove(table_name, *column_names).each do |column_name|
-            execute "ALTER TABLE #{quote_table_name(table_name)} DROP PRIMARY KEY" if primary_key(table_name) == column_name
+            execute "ALTER TABLE #{quote_table_name(table_name)} DROP PRIMARY KEY" if quote_column_name(primary_key(table_name)) == column_name
             execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
           end
         end
