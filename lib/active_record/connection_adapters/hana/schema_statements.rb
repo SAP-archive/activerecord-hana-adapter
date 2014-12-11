@@ -232,7 +232,7 @@ module ActiveRecord
           execute "DROP SEQUENCE #{quote_table_name(sequence)}"     
         end
         
-        def restart_sequence(sequence, value)
+        def restart_sequence(sequence_name, value)
           execute "ALTER SEQUENCE #{quote_table_name(sequence_name)} RESTART WITH #{value}"
         end
 
