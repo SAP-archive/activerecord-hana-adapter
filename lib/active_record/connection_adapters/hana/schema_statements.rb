@@ -312,7 +312,7 @@ module ActiveRecord
         end
 
         def drop_schema(name)
-          execute "DROP SCHEMA #{quote_schema_name(name)}"
+          execute "DROP SCHEMA #{quote_schema_name(name)} CASCADE"
         end
                 
         # === Utils ====================================== #
