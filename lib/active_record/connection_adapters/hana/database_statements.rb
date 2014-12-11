@@ -58,7 +58,7 @@ module ActiveRecord
             stmt.drop if !stmt.nil?
           end
           if has_id and pk
-            val = select_value "SELECT IFNULL(MAX(pk), 0) + 1 FROM #{quote_table_name(table_name)}"
+            val = select_value "SELECT IFNULL(MAX(#{pk}), 0) + 1 FROM #{quote_table_name(table_name)}"
             restart_sequence(default_sequence_name(table_name, nil), val)
           end
         end
