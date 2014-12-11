@@ -47,6 +47,15 @@ module ActiveRecord
         @primary   = nil
         @coder     = nil
       end
+      
+      def simplified_type(field_type)
+        case field_type
+        when /tinyint/i
+          :boolean
+        else
+          super
+        end
+      end
     
     end #class HanaColumn
 
