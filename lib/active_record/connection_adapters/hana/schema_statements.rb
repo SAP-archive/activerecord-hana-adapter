@@ -61,13 +61,13 @@ module ActiveRecord
         end
         
         def tables
-          select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\'", 'SCHEMA'
+          select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\'", 'SCHEMA'
         end
         
         def indexes(table_name, name = nil)
           indexes = []
           return indexes if !table_exists?(table_name)
-          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'",  'INDEXES'
+          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'",  'INDEXES'
           results.each do |row|
             indexes << IndexDefinition.new(row["TABLE_NAME"], row["INDEX_NAME"], (!row["CONSTRAINT"].nil? && row["CONSTRAINT"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
           end
@@ -75,7 +75,7 @@ module ActiveRecord
         end
 
         def table_structure(table_name)
-          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'") do
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
@@ -123,8 +123,8 @@ module ActiveRecord
           end
 
           execute create_sql
-          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = \'#{quote_column_name(primary_key(table_name))}\' AND SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\' AND TABLE_NAME=\'#{quote_table_name(table_name)}\'")
-            execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESET BY SELECT IFNULL(MAX(#{quote_column_name('id')}), 0) + 1 FROM #{quote_table_name(table_name)}"
+          if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = \'#{quote_column_name(primary_key(table_name))}\' AND SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'")
+            execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESET BY SELECT IFNULL(MAX(#{quote_column_name(primary_key(table_name))}), 0) + 1 FROM #{quote_table_name(table_name)}"
           end
 
           if ::ActiveRecord::VERSION::MAJOR >= 4
@@ -207,7 +207,7 @@ module ActiveRecord
         # === Views ============================================ #
                 
         def views
-          select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'#{quote_schema_name(@connection_options[:database])}\'", 'SCHEMA'
+          select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'@connection_options[:database].upcase}\'", 'SCHEMA'
         end
 
         # === Sequences ======================================== #
