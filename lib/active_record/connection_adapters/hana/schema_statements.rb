@@ -67,9 +67,9 @@ module ActiveRecord
         def indexes(table_name, name = nil)
           indexes = []
           return indexes if !table_exists?(table_name)
-          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, LOWER(CONSTRAINT) AS CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'",  'INDEXES'
+          results = select "SELECT LOWER(TABLE_NAME) AS TABLE_NAME, LOWER(INDEX_NAME) AS INDEX_NAME, CONSTRAINT FROM INDEXES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'",  'INDEXES'
           results.each do |row|
-            indexes << IndexDefinition.new(row["table_name"], row["index_name"], (!row["constraint"].nil? && row["constraint"].include?("UNIQUE")) || row[:CONSTRAINT] == "PRIMARY KEY")
+            indexes << IndexDefinition.new(row["table_name"], row["index_name"], (!row["constraint"].nil? && row["constraint"].include?("UNIQUE")) || row["constraint"] == "PRIMARY KEY")
           end
           indexes
         end
@@ -158,6 +158,7 @@ module ActiveRecord
         end
 
         def add_column(table_name, column_name, type, options = {})
+          if options[:de]
           add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD ( #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
           add_column_options!(add_column_sql, options)
           add_column_sql << ")"
