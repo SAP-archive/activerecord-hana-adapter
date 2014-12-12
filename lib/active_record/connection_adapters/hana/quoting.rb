@@ -46,6 +46,7 @@ module ActiveRecord
               "x'#{value}'"
             when :integer then value.to_i
             when :float then value.to_f
+            when :date then quoted_date(value.to_date)
             else
               value
             end
