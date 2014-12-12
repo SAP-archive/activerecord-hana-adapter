@@ -44,7 +44,7 @@ module ActiveRecord
             value_list << type_cast(value, columns[name])
           end
           pk = primary_key(table_name)
-          has_id = key_list.include?(quote_column_name(pk))
+          has_id = key_list.include?(quote_column_name(pk)) || pk.nil? # case when table doesn't have a PK
           if not has_id
             key_list << quote_column_name(pk)
             value_list << type_cast(next_sequence_value(default_sequence_name(table_name, nil)), columns[pk])
