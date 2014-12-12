@@ -44,7 +44,8 @@ module ActiveRecord
               else
                 value
               end
-          when Date, Time then quoted_date(value)
+          when Date then quoted_date(value.to_date)
+          when DateTime, Time  then quoted_date(value)
           when Symbol     then value.to_s
           else
             YAML.dump(value)
@@ -56,7 +57,8 @@ module ActiveRecord
             zone_conversion_method = ActiveRecord::Base.default_timezone == :utc ? :getutc : :getlocal
 
             if value.respond_to?(zone_conversion_method)
-              value = value.send(zone_conversion_method)
+              value =e
+              value.send(zone_conversion_method)
             end
           end
 
