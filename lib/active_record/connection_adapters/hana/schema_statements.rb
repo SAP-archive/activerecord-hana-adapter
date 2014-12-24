@@ -164,7 +164,7 @@ module ActiveRecord
         end
 
         def add_enum_comment table_name, column_name, enum_limit
-          execute("COMMENT ON COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} IS #{enum_limit.map { |v| quote(v) }.join(',')}") if enum_limit
+          execute("COMMENT ON COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} IS #{quote(enum_limit.join(','))}") if enum_limit
         end
         
         def add_column(table_name, column_name, type, options = {})
