@@ -33,22 +33,22 @@ module ActiveRecord
             end
 
             inserted = Set.new
-              (versions - migrated).each do |v|
-                if inserted.include?(v)
-                  raise "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
-                elsif v < version
-                  execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
-                  inserted << v
-                end
+            (versions - migrated).each do |v|
+              if inserted.include?(v)
+                raise "Duplicate migration #{v}. Please renumber your migrations to resolve the conflict."
+              elsif v < version
+                execute "INSERT INTO #{sm_table} (\"version\") VALUES ('#{v}')"
+                inserted << v
               end
             end
           end
+        end
 
-        # === Tables =========================================== #              
+        # === Tables =========================================== #
 
         def table_exists?(table_name)
           return false if table_name.blank?
-          
+
           unquoted_table_name = Utils.unqualify_table_name(table_name)
           super || tables.include?(unquoted_table_name) || views.include?(unquoted_table_name)
         end
@@ -59,11 +59,11 @@ module ActiveRecord
           end
           column
         end
-        
+
         def tables
           select_values "SELECT LOWER(TABLE_NAME) FROM TABLES WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\'", 'SCHEMA'
         end
-        
+
         def indexes(table_name, name = nil)
           indexes = []
           return indexes if !table_exists?(table_name)
@@ -75,11 +75,11 @@ module ActiveRecord
         end
 
         def table_structure(table_name)
-          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE, LENGTH, SCALE FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'") do
+          returning structure = select_rows("SELECT LOWER(COLUMN_NAME) AS COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE, LENGTH, SCALE, COMMENTS FROM TABLE_COLUMNS WHERE SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'") do
             raise(ActiveRecord::StatementInvalid, "Could not find table '#{table_name}'") if structure.empty?
           end
         end
-                
+
         def generic_table_definition(adapter = nil, table_name = nil, is_temporary = nil, options = {})
           if ::ActiveRecord::VERSION::MAJOR >= 4
             TableDefinition.new(native_database_types, table_name, is_temporary, options)
@@ -94,20 +94,22 @@ module ActiveRecord
 
           yield td if block_given?
 
+          enums = td.columns.map{|c| [c.name, c.limit] if c.type == :enum}
+
           if options[:force] && table_exists?(table_name)
             drop_table(table_name, options)
           end
-                    
+
           create_sequence(default_sequence_name(table_name, nil))
           if ::ActiveRecord::VERSION::MAJOR >= 4
             create_sql = schema_creation.accept td
-          else  
+          else
             create_sql = "CREATE TABLE "
             create_sql << "#{quote_table_name(table_name)} ("
             create_sql << td.to_sql
             create_sql << ") #{options[:options]}"
           end
-                        
+
           if options[:row]
             create_sql.insert(6," ROW")
           elsif options[:column]
@@ -123,14 +125,18 @@ module ActiveRecord
           end
 
           execute create_sql
+
+          enums.each do |name, limit|
+            add_enum_comment(table_name, name, limit)
+          end
           if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = \'#{quote_column_name(primary_key(table_name))}\' AND SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'")
             execute "ALTER SEQUENCE #{quote_table_name(default_sequence_name(table_name, nil))} RESET BY SELECT IFNULL(MAX(#{quote_column_name(primary_key(table_name))}), 0) + 1 FROM #{quote_table_name(table_name)}"
           end
 
           if ::ActiveRecord::VERSION::MAJOR >= 4
             td.indexes.each_pair { |c,o| add_index table_name, c, o }
-          end   
-                    
+          end
+
         end
 
         def rename_table(table_name, new_name)
@@ -153,29 +159,37 @@ module ActiveRecord
           return [] if table_name.blank?
 
           table_structure(table_name).map do |column|
-            HanaColumn.new column[0], column[1], column[2], column[3], column[4], column[5]
+            HanaColumn.new column[0], column[1], column[2], column[3], column[4], column[5], column[6]
           end
         end
 
+        def add_enum_comment table_name, column_name, enum_limit
+          execute("COMMENT ON COLUMN #{quote_table_name(table_name)}.#{quote_column_name(column_name)} IS #{enum_limit.map { |v| quote(v) }.join(',')}") if enum_limit
+        end
+        
         def add_column(table_name, column_name, type, options = {})
+          add_comment = true if type == :enum and !options[:limit].nil?
           add_column_sql = "ALTER TABLE #{quote_table_name(table_name)} ADD ( #{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
           add_column_options!(add_column_sql, options)
           add_column_sql << ")"
           execute(add_column_sql)
+          add_enum_comment(table_name, column_name, options[:limit]) if add_comment
         end
 
         def change_column(table_name, column_name, type, options = {})
+          add_comment = true if type == :enum and !options[:limit].nil?
           change_column_sql =  "ALTER TABLE #{quote_table_name(table_name)} ALTER (#{quote_column_name(column_name)} #{type_to_sql(type, options[:limit], options[:precision], options[:scale])}"
           add_column_options!(change_column_sql, options)
           change_column_sql << ")"
           execute(change_column_sql)
+          add_enum_comment(table_name, column_name, options[:limit]) if add_comment
         end
 
         def change_column_default(table_name, column_name, default)
           column = column_for(table_name, column_name)
           change_column table_name, column_name, column.type, {:default => default, :limit => column.limit, :scale => column.scale, :null => column.null, :precision => column.precision }
         end
-        
+
         def change_column_null(table_name, column_name, null)
           column = column_for(table_name, column_name)
           change_column table_name, column_name, column.type, {:default => column.default, :limit => column.limit, :scale => column.scale, :null => null, :precision => column.precision }
@@ -188,7 +202,7 @@ module ActiveRecord
         def remove_column(table_name, *column_names)
           if column_names.flatten!
             message = 'Passing array to remove_columns is deprecated, please use ' +
-                      'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
+              'multiple arguments, like: `remove_columns(:posts, :foo, :bar)`'
             ActiveSupport::Deprecation.warn message, caller
           end
 
@@ -197,7 +211,7 @@ module ActiveRecord
             execute "ALTER TABLE #{quote_table_name(table_name)} DROP (#{column_name})"
           end
         end
-        
+
         alias :remove_columns :remove_column
 
         def remove_default_constraint(table_name, column_name)
@@ -205,7 +219,7 @@ module ActiveRecord
         end
 
         # === Views ============================================ #
-                
+
         def views
           select_values "SELECT VIEW_NAME FROM VIEWS WHERE SCHEMA_NAME=\'@connection_options[:database].upcase}\'", 'SCHEMA'
         end
@@ -214,7 +228,7 @@ module ActiveRecord
 
         def create_sequence(sequence, options = {})
           create_sql = "CREATE SEQUENCE #{quote_table_name(sequence)} INCREMENT BY 1 START WITH 1 NO CYCLE"
-          execute create_sql                
+          execute create_sql
         end
 
         def rename_sequence(table_name, new_name)
@@ -229,19 +243,19 @@ module ActiveRecord
         end
 
         def drop_sequence(sequence)
-          execute "DROP SEQUENCE #{quote_table_name(sequence)}"     
+          execute "DROP SEQUENCE #{quote_table_name(sequence)}"
         end
-        
+
         def restart_sequence(sequence_name, value)
           execute "ALTER SEQUENCE #{quote_table_name(sequence_name)} RESTART WITH #{value}"
         end
 
         # === Datatypes ======================================== #
-                
+
         def native_database_types
           @native_database_types ||= initialize_hana_database_types.freeze
         end
-                
+
         def initialize_hana_database_types
           {
             # Standard Rails Data Types
@@ -257,6 +271,7 @@ module ActiveRecord
             :date         => { :name => "DATE" },
             :binary       => { :name => "BLOB" },
             :boolean      => { :name => "TINYINT"},
+            :enum         => { :name => "NVARCHAR", :limit => 50},
 
             #Additional Hana Data Types
             :bigint       => { :name => "BIGINT" },
@@ -266,43 +281,46 @@ module ActiveRecord
         # Maps logical Rails types to HANA-specific data types.
         def type_to_sql(type, limit = nil, precision = nil, scale = nil)
           case type.to_s
-            when 'decimal'
-              if precision > 38
-                precision = 38
-              end
-              super
-            
-            when 'integer'
-              return 'integer' unless limit
+          when 'decimal'
+            if precision > 38
+              precision = 38
+            end
+            super
+          when 'enum'
+            limit = 50
+            super
 
-              case limit
-                when 1; 'tinyint'
-                when 2; 'smallint'
-                when 3, 4; 'integer'
-                when 5..8; 'bigint'
-                else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
-              end
-              
-              when 'text', 'binary', 'boolean'
-                limit = nil
-                super
-            else
-              super
+          when 'integer'
+            return 'integer' unless limit
+
+            case limit
+            when 1; 'tinyint'
+            when 2; 'smallint'
+            when 3, 4; 'integer'
+            when 5..8; 'bigint'
+            else raise(ActiveRecordError, "No integer type has byte size #{limit}. Use a numeric with precision 0 instead.")
+            end
+
+          when 'text', 'binary', 'boolean'
+            limit = nil
+            super
+          else
+            super
           end
         end
-    
+
         # === Indexes ========================================= #
 
         def remove_index!(table_name, index_name)
           execute "DROP INDEX #{quote_column_name(index_name)}"
-        end     
+        end
 
         def rename_index(table_name, old_name, new_name)
           execute "RENAME INDEX #{quote_column_name(old_name)} TO #{quote_column_name(new_name)}"
-        end             
+        end
 
         # === Schemas ========================================= #
-        
+
         def schemas
           select_values "SELECT LOWER(SCHEMA_NAME) FROM SCHEMAS"
         end
@@ -318,7 +336,7 @@ module ActiveRecord
         def drop_schema(name)
           execute "DROP SCHEMA #{quote_schema_name(name)} CASCADE"
         end
-                
+
         # === Utils ====================================== #
         def quote_schema_name(name)
           quote_column_name(name)
