@@ -126,7 +126,7 @@ module ActiveRecord
 
           execute create_sql
 
-          enums.each do |name, limit|
+          enums.compact.each do |name, limit|
             add_enum_comment(table_name, name, limit)
           end
           if 1 == select_value("SELECT 1 FROM TABLE_COLUMNS WHERE COLUMN_NAME = \'#{quote_column_name(primary_key(table_name))}\' AND SCHEMA_NAME=\'#{@connection_options[:database].upcase}\' AND TABLE_NAME=\'#{table_name.upcase}\'")
