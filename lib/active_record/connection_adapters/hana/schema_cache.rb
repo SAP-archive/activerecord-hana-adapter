@@ -14,7 +14,7 @@ module ActiveRecord
           end       
           
           @columns_hash = Hash.new do |h, table_name|
-            h[table_name] = Hash[columns(table_name).map { |col| [col.name, col] }]
+            h[table_name] = Hash[columns[table_name].map { |col| [col.name, col] }]
           end
 
           @primary_keys = Hash.new do |h, table_name|

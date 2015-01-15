@@ -3,7 +3,7 @@ require File.expand_path('../lib/activerecord-hana-adapter/version', __FILE__)
 
 Gem::Specification.new do |gem|
   gem.authors       = ["Thomas Augsten, Eyk Kny"]
-  gem.email         = ["t.augsten@sap.com, eyk.kny@sap.com"]
+  gem.email         = ["thomas.augsten@sap.com, eyk.kny@sap.com"]
   gem.description   = %q{ActiveRecord-ODBC apapter for HANA}
   gem.summary       = %q{Activerecord-ODBC apapter for HANA}
   gem.homepage      = ""
