@@ -128,4 +128,4 @@ Contributing
 Acknowledgements
 ----------------
 
-Special thanks to the Enterprise Platform and Integration Concepts (EPIC) chair of the Hasso Plattner Institute, especially to the team of Keven Richly for the important contribution to this project.
+Special thanks to the Enterprise Platform and Integration Concepts (EPIC) chair of the Hasso Plattner Institute, especially to the team of Keven Richly for the important contribution to this project. 
