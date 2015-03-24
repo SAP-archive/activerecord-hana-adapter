@@ -27,10 +27,6 @@ group :odbc do
   gem 'ruby-odbc'
 end
 
-group :odbc do
-  gem 'ruby-odbc'
-end
-
 group :development do
   gem 'bcrypt-ruby', '~> 3.0.0'
   gem 'bench_press'

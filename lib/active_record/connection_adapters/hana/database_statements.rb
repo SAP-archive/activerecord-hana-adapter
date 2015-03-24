@@ -30,30 +30,60 @@ module ActiveRecord
         def empty_insert_statement_value
           "null"
         end
+        
+        def current_database
+          @connection_options[:database]
+        end 
+        
+        def insert_fixture(fixture, table_name)
+          columns = schema_cache.columns_hash(table_name)
+          key_list   = []
+          value_list = []
+          fixture.map do |name, value|
+            key_list << quote_column_name(name)
+            value_list << type_cast(value, columns[name])
+          end
+          pk = primary_key(table_name)
+          has_id = key_list.include?(quote_column_name(pk)) || pk.nil? # case when table doesn't have a PK
+          if not has_id
+            key_list << quote_column_name(pk)
+            value_list << type_cast(next_sequence_value(default_sequence_name(table_name, nil)), columns[pk])
+          end
+          prep = Array.new( key_list.size, "?").join(',')
+          args = ["INSERT INTO #{quote_table_name(table_name)} (#{key_list.join(', ')}) VALUES (#{prep})"]
+          args= args.concat(value_list)
+          begin
+            stmt = @connection.run(*args)
+          ensure
+            stmt.drop if !stmt.nil?
+          end
+          if has_id and pk
+            val = select_value "SELECT IFNULL(MAX(#{quote_column_name(pk)}), 0) + 1 FROM #{quote_table_name(table_name)}"
+            restart_sequence(default_sequence_name(table_name, nil), val)
+          end
+        end
 
         # === Executing ============================ #
 
         def exec_query(sql, name = nil, binds = [])
           log(sql, name, binds) do
-      
-            # Don't cache statements without bind values
-            if binds.empty?
-              stmt = @connection.run(sql)
-              cols = stmt.columns(true).map { |c| c.name }
-              records = stmt.fetch_all || []
-              stmt.drop
-              stmt = records
-            else
-              # without statement caching
-              args = bind_params(sql,binds)
-              stmt = @connection.run(*args)
-              cols = stmt.columns(true).map { |c| c.name }
-              records = stmt.fetch_all || []
-              stmt.drop
-              stmt = records
+            begin
+              # Don't cache statements without bind values
+              if binds.empty?
+                stmt = @connection.run(sql)
+                cols = stmt.columns(true).map { |c| c.name.downcase }
+                records = stmt.fetch_all || []
+              else
+                # without statement caching
+                args = bind_params(sql,binds)
+                stmt = @connection.run(*args)
+                cols = stmt.columns(true).map { |c| c.name.downcase }
+                records = stmt.fetch_all || []
+              end
+            ensure
+              stmt.drop if !stmt.nil?
             end
-                
-            ActiveRecord::Result.new(cols, stmt)
+            ActiveRecord::Result.new(cols, records)
           end
         end
 
