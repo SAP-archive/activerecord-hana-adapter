@@ -136,7 +136,7 @@ module ActiveRecord
             when 'DECIMAL'
                 return ActiveRecord::Type::Decimal.new
                 
-            when 'INTEGER'
+            when 'INTEGER','SMALLINT'
                 return ActiveRecord::Type::Integer.new
             
             when 'BIGINT'
@@ -145,10 +145,12 @@ module ActiveRecord
                 return ActiveRecord::Type::Text.new
             when 'BLOB'
                 return ActiveRecord::Type::Binary.new
+            when 'TIMESTAMP'
+                return ActiveRecord::Type::Date.new
             else
             end
             
-            return "not defined"
+            return "not defined: #{htype}"
         end
         def columns(table_name, name = nil)
           return [] if table_name.blank?
