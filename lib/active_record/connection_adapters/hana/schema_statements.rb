@@ -128,12 +128,38 @@ module ActiveRecord
         end
 
         # === Columns ========================================== #
-
+       # SELECT COLUMN_NAME, DEFAULT_VALUE, DATA_TYPE_NAME, IS_NULLABLE FROM TABLE_COLUMNS WHERE SCHEMA_NAME='FIN' AND TABLE_NAME='SALESORDER'
+        #SELECT * FROM TABLE_COLUMNS WHERE SCHEMA_NAME='FIN' AND TABLE_NAME='SALESORDER'
+        
+        def parse_type(htype)
+            case htype
+            when 'DECIMAL'
+                return ActiveRecord::Type::Decimal.new
+                
+            when 'INTEGER','SMALLINT'
+                return ActiveRecord::Type::Integer.new
+            
+            when 'BIGINT'
+                return ActiveRecord::Type::BigInteger.new
+            when 'NVARCHAR'
+                return ActiveRecord::Type::Text.new
+            when 'BLOB'
+                return ActiveRecord::Type::Binary.new
+            when 'TIMESTAMP'
+                return ActiveRecord::Type::Date.new
+            else
+            end
+            
+            return "not defined: #{htype}"
+        end
         def columns(table_name, name = nil)
           return [] if table_name.blank?
 
           table_structure(table_name).map do |column|
-            HanaColumn.new column[0], column[1], column[2], column[3]
+              p "column:#{column.inspect}"
+            # HanaColumn.new column[0], column[1], column[2], column[3]
+            HanaColumn.new column[0], column[1], parse_type(column[2]), column[2], column[3]
+            
           end
         end
 
