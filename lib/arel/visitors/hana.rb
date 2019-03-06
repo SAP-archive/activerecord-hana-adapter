@@ -7,5 +7,3 @@ module Arel
     end
   end
 end
-
-Arel::Visitors::VISITORS['hana'] = Arel::Visitors::Hana
